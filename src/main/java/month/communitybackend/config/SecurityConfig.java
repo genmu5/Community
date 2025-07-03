@@ -74,6 +74,14 @@ public class SecurityConfig {
                         // 2) 인증 없이 접근할 엔드포인트
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/candles/**").permitAll()
+
+                        // 4) WebSocket/STOMP 엔드포인트 (선택)
+                        .requestMatchers("/ws-candles/**").permitAll()
+                        .requestMatchers("/topic/candles").permitAll()
+
+                        // 5) SSE 엔드포인트 (선택)
+                        .requestMatchers("/sse/candles").permitAll()
                         // 그 외는 모두 인증 필요
                         .anyRequest().authenticated()
                 )
