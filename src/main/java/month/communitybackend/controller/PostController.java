@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import month.communitybackend.dto.PostDto.Response;
 
 @RestController
 @RequestMapping("/api/posts")
@@ -17,16 +18,14 @@ public class PostController {
     private final PostService postService;
 
     @PostMapping
-    public ResponseEntity<PostDto.Response> create(
-            @Valid @RequestBody PostDto.Create dto
-    ) {
-        Post p = postService.create(dto.getAuthorId(), dto.getTitle(), dto.getContent());
-        PostDto.Response res = PostDto.Response.builder()
-                .id(p.getId())
-                .title(p.getTitle())
-                .content(p.getContent())
+    public ResponseEntity<Response> create(@RequestBody PostDto.Create dto) {
+        Post saved = postService.create(dto.getTitle(), dto.getContent());
+        Response body = Response.builder()
+                .id(saved.getId())
+                .title(saved.getTitle())
+                .content(saved.getContent())
                 .build();
-        return ResponseEntity.status(HttpStatus.CREATED).body(res);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     @GetMapping

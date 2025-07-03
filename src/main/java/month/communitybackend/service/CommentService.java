@@ -7,9 +7,9 @@ import month.communitybackend.domain.Post;
 import month.communitybackend.domain.User;
 import month.communitybackend.repository.CommentRepository;
 import month.communitybackend.repository.UserRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 
 @Service
@@ -19,13 +19,16 @@ public class CommentService {
     private final PostService postService;
     private final UserRepository userRepo;
 
-    public Comment create(Long userId, Long postId, String content) {
+    @Transactional
+    public Comment create(Long postId, String content) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User author = userRepo.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
+
         Post post = postService.get(postId);
-        User user = userRepo.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
         Comment comment = Comment.builder()
                 .post(post)
-                .author(user)
+                .author(author)
                 .content(content)
                 .build();
         return commentRepo.save(comment);
@@ -40,13 +43,13 @@ public class CommentService {
     }
 
     @Transactional(readOnly = true)
-    public Comment get(Long id){
+    public Comment get(Long id) {
         return commentRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Comment not found. id =" + id));
     }
 
     @Transactional
-    public Comment update(Long id, String newContent){
+    public Comment update(Long id, String newContent) {
         Comment c = get(id);
         c.setContent(newContent);
         return commentRepo.save(c);

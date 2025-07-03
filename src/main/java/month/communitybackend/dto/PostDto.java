@@ -13,7 +13,6 @@ public class PostDto {
     @AllArgsConstructor
     @Builder
     public static class Create {
-        private Long authorId;        // ← 이 필드를 추가합니다.
         @NotBlank
         private String title;
         @NotBlank

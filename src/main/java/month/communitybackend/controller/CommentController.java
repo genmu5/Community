@@ -1,6 +1,5 @@
 package month.communitybackend.controller;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import month.communitybackend.domain.Comment;
 import month.communitybackend.dto.CommentDto;
@@ -20,16 +19,15 @@ public class CommentController {
     @PostMapping
     public ResponseEntity<CommentDto.Response> create(
             @PathVariable Long postId,
-            @Valid @RequestBody CommentDto.Create dto
-    ) {
-        Comment c = commentService.create(dto.getAuthorId(), postId, dto.getContent());
-        CommentDto.Response res = CommentDto.Response.builder()
+            @RequestBody CommentDto.Create dto) {
+        Comment c = commentService.create(postId, dto.getContent());
+        CommentDto.Response body = CommentDto.Response.builder()
                 .id(c.getId())
                 .content(c.getContent())
                 .authorUsername(c.getAuthor().getUsername())
                 .createdAt(c.getCreatedAt())
                 .build();
-        return ResponseEntity.status(HttpStatus.CREATED).body(res);
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
     @GetMapping
@@ -40,47 +38,30 @@ public class CommentController {
                         .content(c.getContent())
                         .authorUsername(c.getAuthor().getUsername())
                         .createdAt(c.getCreatedAt())
-                        .build()
-                )
+                        .build())
                 .toList();
     }
 
-    /** 단건 조회 */
-    @GetMapping("/{id}")
-    public ResponseEntity<CommentDto.Response> getOne(
+    @DeleteMapping("/{commentId}")
+    public ResponseEntity<Void> delete(
             @PathVariable Long postId,
-            @PathVariable Long id
-    ) {
-        Comment c = commentService.get(id);
-        CommentDto.Response res = CommentDto.Response.builder()
-                .id(c.getId())
-                .content(c.getContent())
-                .authorUsername(c.getAuthor().getUsername())
-                .createdAt(c.getCreatedAt())
-                .build();
-        return ResponseEntity.ok(res);
+            @PathVariable Long commentId) {
+        commentService.delete(commentId);
+        return ResponseEntity.noContent().build();
     }
 
-    /** 단건 업데이트 */
-    @PutMapping("/{id}")
+    @PutMapping("/{commentId}")
     public ResponseEntity<CommentDto.Response> update(
             @PathVariable Long postId,
-            @PathVariable Long id,
-            @Valid @RequestBody CommentDto.Update dto
-    ) {
-        Comment c = commentService.update(id, dto.getContent());
-        CommentDto.Response res = CommentDto.Response.builder()
+            @PathVariable Long commentId,
+            @RequestBody CommentDto.Update dto) {
+        Comment c = commentService.update(commentId, dto.getContent());
+        CommentDto.Response body = CommentDto.Response.builder()
                 .id(c.getId())
                 .content(c.getContent())
                 .authorUsername(c.getAuthor().getUsername())
                 .createdAt(c.getCreatedAt())
                 .build();
-        return ResponseEntity.ok(res);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long postId, @PathVariable Long id) {
-        commentService.delete(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(body);
     }
 }

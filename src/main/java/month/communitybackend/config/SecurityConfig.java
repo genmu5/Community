@@ -21,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -41,13 +42,11 @@ public class SecurityConfig {
         this.userDetailsService = userDetailsService;
     }
 
-    /** PasswordEncoder 빈 */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /** DaoAuthenticationProvider 빈 (UserDetailsService + PasswordEncoder) */
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
@@ -56,35 +55,29 @@ public class SecurityConfig {
         return provider;
     }
 
-    /** AuthenticationManager 빈 (login 처리용) */
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    /** JWT + URL별 인가 설정 */    @Bean
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // 우리가 만든 프로바이더 등록
                 .authenticationProvider(authenticationProvider())
-                .cors(Customizer.withDefaults())
-                // CSRF 끄고 세션 STATeless
+                .cors(Customizer.withDefaults())      // CorsConfigurationSource bean 사용
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(m -> m.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // 인증·인가 규칙
                 .authorizeHttpRequests(auth -> auth
-                        // 로그인/회원가입(토큰 발급) 경로
+                        // 1) 프리플라이트 요청 허용
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // 2) 인증 없이 접근할 엔드포인트
                         .requestMatchers("/api/auth/**").permitAll()
-                        // 게시글 조회 및 댓글 조회만 공개
                         .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
-                        // 나머지(게시글 작성∙수정∙삭제, 댓글 CRUD)는 인증 필요
+                        // 그 외는 모두 인증 필요
                         .anyRequest().authenticated()
                 )
-
-
-                // 5) JWT 필터를 인증 필터 앞에 추가
+                // JWT 필터
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtTokenProvider),
                         UsernamePasswordAuthenticationFilter.class
@@ -96,12 +89,13 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000")); // 프론트 주소
+        config.setAllowedOrigins(List.of("http://localhost:3000"));
         config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+        config.setAllowedHeaders(List.of("Authorization","Content-Type"));
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        // 모든 경로에 대해 위 CORS 설정 적용
         source.registerCorsConfiguration("/**", config);
         return source;
     }
