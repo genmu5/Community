@@ -17,7 +17,7 @@ import java.util.List;
 public class CandleScheduler {
     private final CandleService candleService;
     // 모니터링할 마켓 리스트
-    private static final List<String> MARKETS = List.of("KRW-BTC", "KRW-ETH", "KRW-XRP");
+    private static final List<String> MARKETS = List.of("KRW-BTC", "KRW-ETH", "KRW-XRP", "KRW-SOL", "KRW-SAND");
 
     /** 1분마다 각 마켓의 1분봉 100개를 가져와 저장 */
     @Scheduled(fixedRate = 60_000)
