@@ -6,6 +6,9 @@ import month.communitybackend.domain.Post;
 import month.communitybackend.dto.PostDto;
 import month.communitybackend.service.PostService;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,11 +22,15 @@ public class PostController {
 
     @PostMapping
     public ResponseEntity<Response> create(@RequestBody PostDto.Create dto) {
-        Post saved = postService.create(dto.getTitle(), dto.getContent());
+        Post saved = postService.create(dto.getTitle(), dto.getContent(), dto.getMarket());
         Response body = Response.builder()
                 .id(saved.getId())
                 .title(saved.getTitle())
                 .content(saved.getContent())
+                .market(saved.getMarket())
+                .authorNickname(saved.getAuthor().getNickname())
+                .createdAt(saved.getCreatedAt())
+                .updatedAt(saved.getUpdatedAt())
                 .build();
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
@@ -38,6 +45,10 @@ public class PostController {
                         .id(p.getId())
                         .title(p.getTitle())
                         .content(p.getContent())
+                        .authorNickname(p.getAuthor() != null ? p.getAuthor().getNickname() : "탈퇴한 사용자")
+                        .market(p.getMarket())
+                        .createdAt(p.getCreatedAt())
+                        .updatedAt(p.getUpdatedAt())
                         .build()
                 );
     }
@@ -49,6 +60,10 @@ public class PostController {
                 .id(p.getId())
                 .title(p.getTitle())
                 .content(p.getContent())
+                .authorNickname(p.getAuthor() != null ? p.getAuthor().getNickname() : "탈퇴한 사용자")
+                .market(p.getMarket())
+                .createdAt(p.getCreatedAt())
+                .updatedAt(p.getUpdatedAt())
                 .build();
         return ResponseEntity.ok(res);
     }
@@ -63,6 +78,10 @@ public class PostController {
                 .id(p.getId())
                 .title(p.getTitle())
                 .content(p.getContent())
+                .authorNickname(p.getAuthor() != null ? p.getAuthor().getNickname() : "탈퇴한 사용자")
+                .market(p.getMarket())
+                .createdAt(p.getCreatedAt())
+                .updatedAt(p.getUpdatedAt())
                 .build();
         return ResponseEntity.ok(res);
     }
@@ -71,5 +90,15 @@ public class PostController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         postService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/market/{market}")
+    public ResponseEntity<Page<PostDto.Response>> getPostsByMarket(
+            @PathVariable String market,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<PostDto.Response> posts = postService.getPostsByMarket(market, pageable);
+        return ResponseEntity.ok(posts);
     }
 }

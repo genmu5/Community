@@ -3,9 +3,12 @@ package month.communitybackend.dto;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
+import java.time.LocalDateTime;
 
 
 public class PostDto {
+
+
 
     @Getter
     @Setter
@@ -17,6 +20,8 @@ public class PostDto {
         private String title;
         @NotBlank
         private String content;
+        @NotBlank
+        private String market;
     }
 
     @Getter
@@ -40,6 +45,10 @@ public class PostDto {
         private Long id;
         private String title;
         private String content;
+        private String authorNickname;
+        private String market;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
     }
 }
 

@@ -33,6 +33,11 @@ public class Post {
     @JoinColumn(name = "author_id")
     private User author;
 
+    @Column(nullable = false, length = 50)
+    private String market;
+
+
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
