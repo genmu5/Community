@@ -72,7 +72,7 @@ public class SecurityConfig {
                         // 1) 프리플라이트 요청 허용
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // 2) 인증 없이 접근할 엔드포인트
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/candles/**").permitAll()
 

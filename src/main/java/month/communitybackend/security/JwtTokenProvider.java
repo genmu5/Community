@@ -17,13 +17,16 @@ import java.util.List;
 public class JwtTokenProvider {
     private final Key key;
     private final long validityInMs;
+    private final long refreshValidityInMs;
 
     public JwtTokenProvider(
             @Value("${jwt.secret}") String secret,
-            @Value("${jwt.expiration}") long validityInMs
+            @Value("${jwt.expiration}") long validityInMs,
+            @Value("${jwt.refresh-expiration}") long refreshValidityInMs
     ) {
         this.key = Keys.hmacShaKeyFor(Base64.getEncoder().encode(secret.getBytes()));
         this.validityInMs = validityInMs;
+        this.refreshValidityInMs = refreshValidityInMs;
     }
 
     public String createToken(String username, List<String> roles) {
@@ -41,7 +44,28 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    public String createRefreshToken(String username) {
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + refreshValidityInMs);
+
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(now)
+                .setExpiration(exp)
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
     public boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public boolean validateRefreshToken(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
