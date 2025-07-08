@@ -21,13 +21,13 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    @Transactional(readOnly = true)  // ← 트랜잭션 안에서 roles 컬렉션을 로드
+    @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username)
             throws UsernameNotFoundException {
         User user = userRepo.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("사용자 없음: " + username));
 
-        // 이 시점엔 트랜잭션이 열려 있어, roles를 안전하게 초기화할 수 있습니다.
+
         List<GrantedAuthority> authorities = user.getRoles().stream()
                 .map(role -> new SimpleGrantedAuthority(role.getName()))
                 .collect(Collectors.toList());

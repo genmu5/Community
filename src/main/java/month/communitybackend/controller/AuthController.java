@@ -63,8 +63,7 @@ public class AuthController {
                 )
         );
         String accessToken = jwtTokenProvider.createToken(
-                auth.getName(),
-                auth.getAuthorities().stream()
+                auth.getName(), auth.getAuthorities().stream()
                         .map(GrantedAuthority::getAuthority)
                         .toList()
         );
@@ -81,6 +80,27 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("accessToken", accessToken, "refreshToken", refreshToken));
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<UserDto.Response> getCurrentUser(Authentication authentication) {
+        if(authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String username = authentication.getName();
+        User user = userService.findByUsername(username);
+
+        UserDto.Response res = UserDto.Response.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .nickname(user.getNickname())
+                .roles(user.getRoles().stream()
+                        .map(Role::getName)
+                .collect(Collectors.toSet()))
+                .build();
+
+        return ResponseEntity.ok(res);
+    }
     @PostMapping("/refresh")
     public ResponseEntity<Map<String, String>> refresh(@RequestBody Map<String, String> request) {
         String refreshToken = request.get("refreshToken");
