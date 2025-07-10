@@ -15,12 +15,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CandleController {
     private final CandleService candleService;
-
-    /**
-     * GET /api/candles?market=KRW-BTC&limit=50
-     * @param market 심볼 (기본: KRW-BTC)
-     * @param limit  조회할 개수 (기본: 50)
-     */
     @GetMapping
     public List<CandleDto> getCandles(
             @RequestParam(defaultValue = "KRW-BTC") String market,

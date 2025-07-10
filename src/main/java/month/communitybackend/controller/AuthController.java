@@ -103,18 +103,25 @@ public class AuthController {
     }
     @PostMapping("/refresh")
     public ResponseEntity<Map<String, String>> refresh(@RequestBody Map<String, String> request) {
-        String refreshToken = request.get("refreshToken");
+        String oldRefreshToken = request.get("refreshToken");
 
-        if (refreshToken == null || !jwtTokenProvider.validateRefreshToken(refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if(oldRefreshToken == null || !jwtTokenProvider.validateToken(oldRefreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid token"));
         }
 
-        String username = jwtTokenProvider.getUsername(refreshToken);
-        User user = userRepository.findByUsername(username).orElseThrow();
+        RefreshToken refreshToken = refreshTokenRepository.findByRefreshToken(oldRefreshToken)
+                .orElseThrow(() -> new RuntimeException("Refresh token not found in DB"));
+        String username = jwtTokenProvider.getUsername(oldRefreshToken);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found in DB"));
 
         String newAccessToken = jwtTokenProvider.createToken(username, user.getRoles().stream().map(Role::getName).toList());
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(username);
 
-        return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
+        refreshToken.update(newRefreshToken);
+        refreshTokenRepository.save(refreshToken);
+
+        return ResponseEntity.ok(Map.of("accessToken", newAccessToken, "refreshToken", newRefreshToken));
     }
 
     @PostMapping("/logout")
