@@ -1,6 +1,8 @@
 package month.communitybackend.controller;
 
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import month.communitybackend.domain.RefreshToken;
@@ -53,33 +55,21 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @Transactional
-    public ResponseEntity<Map<String,String>> login(
-            @Valid @RequestBody UserDto.LoginRequest dto
-    ) {
-        Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        dto.getUsername(), dto.getPassword()
-                )
-        );
-        String accessToken = jwtTokenProvider.createToken(
-                auth.getName(), auth.getAuthorities().stream()
-                        .map(GrantedAuthority::getAuthority)
-                        .toList()
-        );
-        String refreshToken = jwtTokenProvider.createRefreshToken(auth.getName());
+        public ResponseEntity<?> login(@RequestBody UserDto.LoginRequest loginRequest, HttpServletResponse response) {
+        Map<String, String> tokens = userService.login(loginRequest.getUsername(), loginRequest.getPassword());
 
-        User user = userRepository.findByUsername(auth.getName()).orElseThrow();
+        // Refresh Token을 쿠키에 담기
+        Cookie refreshTokenCookie = new Cookie("refreshToken", tokens.get("refreshToken"));
+        refreshTokenCookie.setHttpOnly(true);
+        refreshTokenCookie.setSecure(false); // HTTPS 환경에서만 전송
+        refreshTokenCookie.setPath("/");
+        refreshTokenCookie.setMaxAge(60 * 60 * 24 * 14); // 2주
+        // refreshTokenCookie.setSameSite("Strict"); // SameSite 설정
 
-        refreshTokenRepository.findByUserId(user.getId())
-                .ifPresentOrElse(
-                        existingToken -> existingToken.update(refreshToken),
-                        () -> refreshTokenRepository.save(new RefreshToken(user.getId(), refreshToken))
-                );
+        response.addCookie(refreshTokenCookie);
 
-        return ResponseEntity.ok(Map.of("accessToken", accessToken, "refreshToken", refreshToken));
+        return ResponseEntity.ok(Map.of("accessToken", tokens.get("accessToken")));
     }
-
     @GetMapping("/me")
     public ResponseEntity<UserDto.Response> getCurrentUser(Authentication authentication) {
         if(authentication == null || !authentication.isAuthenticated()) {
@@ -102,35 +92,27 @@ public class AuthController {
         return ResponseEntity.ok(res);
     }
     @PostMapping("/refresh")
-    public ResponseEntity<Map<String, String>> refresh(@RequestBody Map<String, String> request) {
-        String oldRefreshToken = request.get("refreshToken");
+    public ResponseEntity<?> refresh(@CookieValue("refreshToken") String refreshToken, HttpServletResponse response) {
+        Map<String, String> newTokens = userService.refreshTokens(refreshToken);
 
-        if(oldRefreshToken == null || !jwtTokenProvider.validateToken(oldRefreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid token"));
-        }
+        Cookie newRefreshTokenCookie = new Cookie("refreshToken", newTokens.get("refreshToken"));
+        newRefreshTokenCookie.setHttpOnly(true);
+        newRefreshTokenCookie.setSecure(false);
+        newRefreshTokenCookie.setPath("/");
+        newRefreshTokenCookie.setMaxAge(60 * 60 * 24 * 14);
+        response.addCookie(newRefreshTokenCookie);
 
-        RefreshToken refreshToken = refreshTokenRepository.findByRefreshToken(oldRefreshToken)
-                .orElseThrow(() -> new RuntimeException("Refresh token not found in DB"));
-        String username = jwtTokenProvider.getUsername(oldRefreshToken);
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found in DB"));
-
-        String newAccessToken = jwtTokenProvider.createToken(username, user.getRoles().stream().map(Role::getName).toList());
-        String newRefreshToken = jwtTokenProvider.createRefreshToken(username);
-
-        refreshToken.update(newRefreshToken);
-        refreshTokenRepository.save(refreshToken);
-
-        return ResponseEntity.ok(Map.of("accessToken", newAccessToken, "refreshToken", newRefreshToken));
+        return ResponseEntity.ok(Map.of("accessToken", newTokens.get("accessToken")));
     }
 
     @PostMapping("/logout")
-    @Transactional
-    public ResponseEntity<Void> logout(HttpServletRequest request) {
-        String token = request.getHeader("Authorization").substring(7);
-        String username = jwtTokenProvider.getUsername(token);
-        User user = userRepository.findByUsername(username).orElseThrow();
-        refreshTokenRepository.findByUserId(user.getId()).ifPresent(refreshTokenRepository::delete);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        Cookie refreshTokenCookie = new Cookie("refreshToken", null);
+        refreshTokenCookie.setHttpOnly(true);
+        refreshTokenCookie.setSecure(false);
+        refreshTokenCookie.setPath("/");
+        refreshTokenCookie.setMaxAge(0); // 쿠키 즉시 만료
+        response.addCookie(refreshTokenCookie);
+        return ResponseEntity.ok("Logged out successfully");
     }
 }

@@ -83,6 +83,9 @@ public class SecurityConfig {
                         // 5) SSE 엔드포인트 (선택)
                         .requestMatchers("/sse/candles").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tickers").permitAll()
+
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/logout").permitAll()
+
                         // 그 외는 모두 인증 필요
                         .anyRequest().authenticated()
                 )
