@@ -45,7 +45,7 @@ public class PostDto {
         private Long id;
         private String title;
         private String content;
-        private String authorNickname;
+        private String authorUsername; // Changed from authorNickname
         private String market;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;

@@ -28,7 +28,7 @@ public class PostController {
                 .title(saved.getTitle())
                 .content(saved.getContent())
                 .market(saved.getMarket())
-                .authorNickname(saved.getAuthor().getNickname())
+                .authorUsername(saved.getAuthor().getUsername()) // Changed to authorUsername
                 .createdAt(saved.getCreatedAt())
                 .updatedAt(saved.getUpdatedAt())
                 .build();
@@ -40,32 +40,13 @@ public class PostController {
             @RequestParam(defaultValue="0") int page,
             @RequestParam(defaultValue="10") int size
     ) {
-        return postService.list(page, size)
-                .map(p -> PostDto.Response.builder()
-                        .id(p.getId())
-                        .title(p.getTitle())
-                        .content(p.getContent())
-                        .authorNickname(p.getAuthor() != null ? p.getAuthor().getNickname() : "탈퇴한 사용자")
-                        .market(p.getMarket())
-                        .createdAt(p.getCreatedAt())
-                        .updatedAt(p.getUpdatedAt())
-                        .build()
-                );
+        return postService.list(page, size);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<PostDto.Response> get(@PathVariable Long id) {
-        Post p = postService.get(id);
-        PostDto.Response res = PostDto.Response.builder()
-                .id(p.getId())
-                .title(p.getTitle())
-                .content(p.getContent())
-                .authorNickname(p.getAuthor() != null ? p.getAuthor().getNickname() : "탈퇴한 사용자")
-                .market(p.getMarket())
-                .createdAt(p.getCreatedAt())
-                .updatedAt(p.getUpdatedAt())
-                .build();
-        return ResponseEntity.ok(res);
+        PostDto.Response p = postService.get(id); // Changed type to PostDto.Response
+        return ResponseEntity.ok(p);
     }
 
     @PutMapping("/{id}")
@@ -73,15 +54,16 @@ public class PostController {
             @PathVariable Long id,
             @Valid @RequestBody PostDto.Update dto
     ) {
-        Post p = postService.update(id, dto.getTitle(), dto.getContent());
-        PostDto.Response res = PostDto.Response.builder()
-                .id(p.getId())
-                .title(p.getTitle())
-                .content(p.getContent())
-                .authorNickname(p.getAuthor() != null ? p.getAuthor().getNickname() : "탈퇴한 사용자")
-                .market(p.getMarket())
-                .createdAt(p.getCreatedAt())
-                .updatedAt(p.getUpdatedAt())
+        // postService.update는 Post 엔티티를 반환하므로, 다시 DTO로 변환해야 합니다.
+        Post updatedPost = postService.update(id, dto.getTitle(), dto.getContent());
+        Response res = Response.builder()
+                .id(updatedPost.getId())
+                .title(updatedPost.getTitle())
+                .content(updatedPost.getContent())
+                .authorUsername(updatedPost.getAuthor() != null ? updatedPost.getAuthor().getUsername() : "탈퇴한 사용자") // Changed to authorUsername
+                .market(updatedPost.getMarket())
+                .createdAt(updatedPost.getCreatedAt())
+                .updatedAt(updatedPost.getUpdatedAt())
                 .build();
         return ResponseEntity.ok(res);
     }

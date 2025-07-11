@@ -1,11 +1,9 @@
 package month.communitybackend.controller;
 
 import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import month.communitybackend.domain.RefreshToken;
 import month.communitybackend.domain.Role;
 import month.communitybackend.domain.User;
 import month.communitybackend.dto.UserDto;
@@ -16,8 +14,6 @@ import month.communitybackend.service.UserService;
 import org.springframework.http.*;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;

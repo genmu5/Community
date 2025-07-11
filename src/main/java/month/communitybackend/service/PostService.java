@@ -4,7 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import month.communitybackend.domain.Post;
-import month.communitybackend.domain.*;
+import month.communitybackend.domain.User;
 import month.communitybackend.dto.PostDto;
 import month.communitybackend.repository.PostRepository;
 import month.communitybackend.repository.UserRepository;
@@ -23,16 +23,13 @@ public class PostService {
 
     @Transactional
     public Post create(String title, String content, String market) {
-        // ① SecurityContext에서 현재 로그인한 username 가져오기
         String username = SecurityContextHolder.getContext()
                 .getAuthentication()
                 .getName();
 
-        // ② username으로 User 조회
         User user = userRepo.findByUsername(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
 
-        // ③ Post 생성 시 author와 market에 위 user와 market 연결
         Post post = Post.builder()
                 .author(user)
                 .title(title)
@@ -43,38 +40,45 @@ public class PostService {
         return postRepo.save(post);
     }
 
-    public Page<Post> list(int page, int size) {
-        return postRepo.findAll(
-                PageRequest.of(page, size, Sort.by("createdAt").descending())
-        );
+    public Page<PostDto.Response> list(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return postRepo.findAll(pageable).map(this::convertToPostDtoResponse);
     }
 
-    public Post get(Long postId) {
-        return postRepo.findById(postId)
+    public PostDto.Response get(Long postId) {
+        Post post = postRepo.findById(postId)
                 .orElseThrow(() -> new EntityNotFoundException("Post not found"));
+        return convertToPostDtoResponse(post);
     }
 
+    @Transactional
     public Post update(Long postId, String title, String content) {
-        Post post = get(postId);
+        Post post = postRepo.findById(postId)
+                .orElseThrow(() -> new EntityNotFoundException("Post not found"));
         post.setTitle(title);
         post.setContent(content);
         return postRepo.save(post);
     }
 
+    @Transactional
     public void delete(Long postId) {
         postRepo.deleteById(postId);
     }
 
     public Page<PostDto.Response> getPostsByMarket(String market, Pageable pageable) {
         Page<Post> posts = postRepo.findByMarket(market, pageable);
-        return posts.map(post -> new PostDto.Response(
-                post.getId(),
-                post.getTitle(),
-                post.getContent(),
-                post.getAuthor() != null ? post.getAuthor().getNickname() : "탈퇴한 사용자",
-                post.getMarket(),
-                post.getCreatedAt(),
-                post.getUpdatedAt()
-        ));
+        return posts.map(this::convertToPostDtoResponse);
+    }
+
+    private PostDto.Response convertToPostDtoResponse(Post post) {
+        return PostDto.Response.builder()
+                .id(post.getId())
+                .title(post.getTitle())
+                .content(post.getContent())
+                .authorUsername(post.getAuthor() != null ? post.getAuthor().getUsername() : "탈퇴한 사용자")
+                .market(post.getMarket())
+                .createdAt(post.getCreatedAt())
+                .updatedAt(post.getUpdatedAt())
+                .build();
     }
 }

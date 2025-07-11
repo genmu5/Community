@@ -6,6 +6,7 @@ import month.communitybackend.domain.Comment;
 import month.communitybackend.domain.Post;
 import month.communitybackend.domain.User;
 import month.communitybackend.repository.CommentRepository;
+import month.communitybackend.repository.PostRepository; // PostRepository 추가
 import month.communitybackend.repository.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CommentService {
     private final CommentRepository commentRepo;
-    private final PostService postService;
+    private final PostRepository postRepo; // PostRepository 주입
     private final UserRepository userRepo;
 
     @Transactional
@@ -25,7 +26,10 @@ public class CommentService {
         User author = userRepo.findByUsername(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
 
-        Post post = postService.get(postId);
+        // PostService 대신 PostRepository를 사용하여 Post 엔티티 직접 조회
+        Post post = postRepo.findById(postId)
+                .orElseThrow(() -> new EntityNotFoundException("Post not found: " + postId));
+
         Comment comment = Comment.builder()
                 .post(post)
                 .author(author)
