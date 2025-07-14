@@ -83,4 +83,13 @@ public class PostController {
         Page<PostDto.Response> posts = postService.getPostsByMarket(market, pageable);
         return ResponseEntity.ok(posts);
     }
+
+    @GetMapping("/my")
+    public ResponseEntity<Page<PostDto.Response>> getMyPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<PostDto.Response> posts = postService.getMyPosts(pageable);
+        return ResponseEntity.ok(posts);
+    }
 }

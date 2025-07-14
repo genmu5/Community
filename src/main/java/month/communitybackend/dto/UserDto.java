@@ -32,4 +32,10 @@ public class UserDto {
         private String nickname;
         private Set<String> roles;
     }
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class Update {
+        private String password;
+        private String email;
+    }
 }

@@ -70,6 +70,13 @@ public class PostService {
         return posts.map(this::convertToPostDtoResponse);
     }
 
+    public Page<PostDto.Response> getMyPosts(Pageable pageable) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepo.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
+        return postRepo.findByAuthor(user, pageable).map(this::convertToPostDtoResponse);
+    }
+
     private PostDto.Response convertToPostDtoResponse(Post post) {
         return PostDto.Response.builder()
                 .id(post.getId())

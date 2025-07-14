@@ -7,9 +7,6 @@ import java.time.LocalDateTime;
 
 
 public class PostDto {
-
-
-
     @Getter
     @Setter
     @NoArgsConstructor

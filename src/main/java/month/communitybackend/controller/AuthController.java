@@ -7,12 +7,8 @@ import lombok.RequiredArgsConstructor;
 import month.communitybackend.domain.Role;
 import month.communitybackend.domain.User;
 import month.communitybackend.dto.UserDto;
-import month.communitybackend.repository.RefreshTokenRepository;
-import month.communitybackend.repository.UserRepository;
-import month.communitybackend.security.JwtTokenProvider;
-import month.communitybackend.service.UserService;
+import month.communitybackend.service.AuthService;
 import org.springframework.http.*;
-import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,17 +19,13 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
-    private final UserService userService;
-    private final AuthenticationManager authenticationManager;
-    private final JwtTokenProvider jwtTokenProvider;
-    private final RefreshTokenRepository refreshTokenRepository;
-    private final UserRepository userRepository;
+    private final AuthService authService;
 
     @PostMapping("/register")
     public ResponseEntity<UserDto.Response> register(
             @Valid @RequestBody UserDto.signupRequest dto
     ) {
-        User created = userService.register(dto);
+        User created = authService.register(dto);
 
         UserDto.Response res = UserDto.Response.builder()
                 .id(created.getId())
@@ -51,8 +43,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-        public ResponseEntity<?> login(@RequestBody UserDto.LoginRequest loginRequest, HttpServletResponse response) {
-        Map<String, String> tokens = userService.login(loginRequest.getUsername(), loginRequest.getPassword());
+    public ResponseEntity<?> login(@RequestBody UserDto.LoginRequest loginRequest, HttpServletResponse response) {
+        Map<String, String> tokens = authService.login(loginRequest.getUsername(), loginRequest.getPassword());
 
         // Refresh Token을 쿠키에 담기
         Cookie refreshTokenCookie = new Cookie("refreshToken", tokens.get("refreshToken"));
@@ -66,6 +58,7 @@ public class AuthController {
 
         return ResponseEntity.ok(Map.of("accessToken", tokens.get("accessToken")));
     }
+
     @GetMapping("/me")
     public ResponseEntity<UserDto.Response> getCurrentUser(Authentication authentication) {
         if(authentication == null || !authentication.isAuthenticated()) {
@@ -73,7 +66,7 @@ public class AuthController {
         }
 
         String username = authentication.getName();
-        User user = userService.findByUsername(username);
+        User user = authService.findByUsername(username);
 
         UserDto.Response res = UserDto.Response.builder()
                 .id(user.getId())
@@ -82,14 +75,15 @@ public class AuthController {
                 .nickname(user.getNickname())
                 .roles(user.getRoles().stream()
                         .map(Role::getName)
-                .collect(Collectors.toSet()))
+                        .collect(Collectors.toSet()))
                 .build();
 
         return ResponseEntity.ok(res);
     }
+
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(@CookieValue("refreshToken") String refreshToken, HttpServletResponse response) {
-        Map<String, String> newTokens = userService.refreshTokens(refreshToken);
+        Map<String, String> newTokens = authService.refreshTokens(refreshToken);
 
         Cookie newRefreshTokenCookie = new Cookie("refreshToken", newTokens.get("refreshToken"));
         newRefreshTokenCookie.setHttpOnly(true);

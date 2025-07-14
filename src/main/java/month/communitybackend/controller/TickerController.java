@@ -18,9 +18,6 @@ public class TickerController {
 
     private final RestTemplate rt = new RestTemplate();
 
-    /**
-     * 프론트에서 ?markets=KRW-BTC,KRW-ETH 형태로 호출
-     */
     @GetMapping("/api/tickers")
     public List<Map<String, Object>> getTickers(
             @RequestParam("markets") String marketsCsv
