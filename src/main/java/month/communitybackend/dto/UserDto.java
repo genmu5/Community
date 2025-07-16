@@ -23,6 +23,7 @@ public class UserDto {
         private String username;
         @NotBlank
         private String password;
+        private boolean rememberMe;
     }
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class Response{

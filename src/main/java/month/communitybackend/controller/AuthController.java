@@ -51,7 +51,9 @@ public class AuthController {
         refreshTokenCookie.setHttpOnly(true);
         refreshTokenCookie.setSecure(false); // HTTPS 환경에서만 전송
         refreshTokenCookie.setPath("/");
-        refreshTokenCookie.setMaxAge(60 * 60 * 24 * 14); // 2주
+        if (loginRequest.isRememberMe()) {
+            refreshTokenCookie.setMaxAge(60 * 60 * 24 * 14); // 2주
+        }
         // refreshTokenCookie.setSameSite("Strict"); // SameSite 설정
 
         response.addCookie(refreshTokenCookie);
