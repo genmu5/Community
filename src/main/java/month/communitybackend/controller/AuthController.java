@@ -1,6 +1,5 @@
 package month.communitybackend.controller;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +11,7 @@ import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -46,17 +46,17 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody UserDto.LoginRequest loginRequest, HttpServletResponse response) {
         Map<String, String> tokens = authService.login(loginRequest.getUsername(), loginRequest.getPassword());
 
-        // Refresh Token을 쿠키에 담기
-        Cookie refreshTokenCookie = new Cookie("refreshToken", tokens.get("refreshToken"));
-        refreshTokenCookie.setHttpOnly(true);
-        refreshTokenCookie.setSecure(false); // HTTPS 환경에서만 전송
-        refreshTokenCookie.setPath("/");
-        if (loginRequest.isRememberMe()) {
-            refreshTokenCookie.setMaxAge(60 * 60 * 24 * 14); // 2주
-        }
-        // refreshTokenCookie.setSameSite("Strict"); // SameSite 설정
+        Duration maxAge = loginRequest.isRememberMe() ? Duration.ofDays(14) : null; // 2주 또는 세션 쿠키
 
-        response.addCookie(refreshTokenCookie);
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", tokens.get("refreshToken"))
+                .httpOnly(true)
+                .secure(false) // 개발 환경에서는 false, 배포 환경에서는 true
+                .path("/")
+                .sameSite("Lax") // SameSite 설정
+                .maxAge(maxAge != null ? maxAge : Duration.ofSeconds(-1)) // maxAge가 null이면 세션 쿠키
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
 
         return ResponseEntity.ok(Map.of("accessToken", tokens.get("accessToken")));
     }
@@ -87,24 +87,30 @@ public class AuthController {
     public ResponseEntity<?> refresh(@CookieValue("refreshToken") String refreshToken, HttpServletResponse response) {
         Map<String, String> newTokens = authService.refreshTokens(refreshToken);
 
-        Cookie newRefreshTokenCookie = new Cookie("refreshToken", newTokens.get("refreshToken"));
-        newRefreshTokenCookie.setHttpOnly(true);
-        newRefreshTokenCookie.setSecure(false);
-        newRefreshTokenCookie.setPath("/");
-        newRefreshTokenCookie.setMaxAge(60 * 60 * 24 * 14);
-        response.addCookie(newRefreshTokenCookie);
+        ResponseCookie newRefreshTokenCookie = ResponseCookie.from("refreshToken", newTokens.get("refreshToken"))
+                .httpOnly(true)
+                .secure(false) // 개발 환경에서는 false, 배포 환경에서는 true
+                .path("/")
+                .sameSite("Lax") // SameSite 설정
+                .maxAge(Duration.ofDays(14)) // 2주
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, newRefreshTokenCookie.toString());
 
         return ResponseEntity.ok(Map.of("accessToken", newTokens.get("accessToken")));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
-        Cookie refreshTokenCookie = new Cookie("refreshToken", null);
-        refreshTokenCookie.setHttpOnly(true);
-        refreshTokenCookie.setSecure(false);
-        refreshTokenCookie.setPath("/");
-        refreshTokenCookie.setMaxAge(0); // 쿠키 즉시 만료
-        response.addCookie(refreshTokenCookie);
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", null)
+                .httpOnly(true)
+                .secure(false) // 개발 환경에서는 false, 배포 환경에서는 true
+                .path("/")
+                //.sameSite("Lax") // SameSite 설정
+                .maxAge(0) // 쿠키 즉시 만료
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
         return ResponseEntity.ok("Logged out successfully");
     }
 }

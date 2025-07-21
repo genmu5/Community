@@ -69,27 +69,20 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(m -> m.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // 1) 프리플라이트 요청 허용
+
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        // 2) 인증 없이 접근할 엔드포인트
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
+                        /** 사용자 로그인 없이 GET 요청 가능한 API **/
                         .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/candles/**").permitAll()
-
-                        // 4) WebSocket/STOMP 엔드포인트 (선택)
-                        .requestMatchers("/ws-candles/**").permitAll()
-                        .requestMatchers("/topic/candles").permitAll()
-
-                        // 5) SSE 엔드포인트 (선택)
-                        .requestMatchers("/sse/candles").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tickers").permitAll()
 
+                        /** 권한 획득을 위한 API **/
                         .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/logout").permitAll()
 
-                        // 그 외는 모두 인증 필요
+                        /** 그 외는 모두 인증 필요 **/
                         .anyRequest().authenticated()
                 )
-                // JWT 필터
+
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtTokenProvider),
                         UsernamePasswordAuthenticationFilter.class
@@ -107,7 +100,7 @@ public class SecurityConfig {
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        // 모든 경로에 대해 위 CORS 설정 적용
+
         source.registerCorsConfiguration("/**", config);
         return source;
     }
