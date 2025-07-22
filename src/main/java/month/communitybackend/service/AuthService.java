@@ -2,9 +2,11 @@ package month.communitybackend.service;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import month.communitybackend.domain.PasswordResetToken;
 import month.communitybackend.domain.Role;
 import month.communitybackend.domain.User;
 import month.communitybackend.dto.UserDto;
+import month.communitybackend.repository.PasswordResetTokenRepository;
 import month.communitybackend.repository.RoleRepository;
 import month.communitybackend.repository.UserRepository;
 import month.communitybackend.security.JwtTokenProvider;
@@ -16,8 +18,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,6 +33,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailService emailService;
 
     @Transactional
     public User register(UserDto.signupRequest requestDto) {
@@ -80,6 +86,48 @@ public class AuthService {
         String newRefreshToken = tokenProvider.createRefreshToken(username);
 
         return Map.of("accessToken", newAccessToken, "refreshToken", newRefreshToken);
+    }
+
+    // 1. 비밀번호 재설정 요청 (이메일 전송)
+    @Transactional
+    public void requestPasswordReset(String username, String email) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("해당 아이디의 사용자를 찾을 수 없습니다."));
+
+        if (!user.getEmail().equals(email)) {
+            throw new IllegalArgumentException("아이디와 이메일이 일치하지 않습니다.");
+        }
+
+        // 기존에 발급된 토큰이 있다면 삭제 (선택 사항: 여러 번 요청 시 이전 토큰 무효화)
+        passwordResetTokenRepository.findByUser(user).ifPresent(passwordResetTokenRepository::delete);
+
+        String token = UUID.randomUUID().toString();
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(token)
+                .user(user)
+                .expiryDate(LocalDateTime.now().plusHours(1)) // 1시간 유효
+                .build();
+        passwordResetTokenRepository.save(resetToken);
+
+        emailService.sendPasswordResetEmail(user.getEmail(), token);
+    }
+
+    // 2. 비밀번호 재설정 완료
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않거나 만료된 토큰입니다."));
+
+        if (resetToken.isExpired()) {
+            passwordResetTokenRepository.delete(resetToken); // 만료된 토큰 삭제
+            throw new IllegalArgumentException("만료된 토큰입니다.");
+        }
+
+        User user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword)); // 새 비밀번호 인코딩 후 저장
+        userRepository.save(user);
+
+        passwordResetTokenRepository.delete(resetToken); // 사용된 토큰 삭제
     }
 }
 
