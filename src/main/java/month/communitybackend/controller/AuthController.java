@@ -1,5 +1,6 @@
 package month.communitybackend.controller;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -112,5 +113,68 @@ public class AuthController {
 
         response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
         return ResponseEntity.ok("Logged out successfully");
+    }
+
+    @PostMapping("/verify-username-for-password-reset")
+    public ResponseEntity<?> verifyUsernameForPasswordReset(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        if(username == null || username.isEmpty()) {
+            return ResponseEntity.badRequest().body("아이디를 입력해주세요");
+        }
+        try{
+            User user = authService.findByUsername(username);
+            String maskedEmail = maskEmail(user.getEmail());
+            return ResponseEntity.ok(Map.of("email", maskedEmail));
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("해당 아이디의 사용자를 찾을 수 없습니다.");
+        }
+
+    }
+    // 비밀번호 재설정 요청 엔드포인트
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String email = request.get("email");
+        if (username == null || username.isEmpty() || email == null || email.isEmpty()) {
+            return ResponseEntity.badRequest().body("아이디와 이메일 주소를 모두 입력해주세요.");
+        }
+        try {
+            authService.requestPasswordReset(username, email);
+            return ResponseEntity.ok("비밀번호 재설정 링크가 이메일로 전송되었습니다.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // 비밀번호 재설정 완료 엔드포인트
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
+        String token = request.get("token");
+        String newPassword = request.get("newPassword");
+
+        if (token == null || token.isEmpty() || newPassword == null || newPassword.isEmpty()) {
+            return ResponseEntity.badRequest().body("토큰과 새 비밀번호를 모두 입력해주세요.");
+        }
+
+        try {
+            authService.resetPassword(token, newPassword);
+            return ResponseEntity.ok("비밀번호가 성공적으로 재설정되었습니다.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    private String maskEmail(String email) {
+        if (email == null || !email.contains("@")) {
+            return email;
+        }
+        int atIndex = email.indexOf("@");
+        String localPart = email.substring(0, atIndex);
+        String domainPart = email.substring(atIndex);
+
+        if (localPart.length() <= 3) {
+            return localPart.replaceAll(".", "*") + domainPart; // 모든 문자를 *로 마스킹
+        }
+        return localPart.substring(0, 3) + "***" + domainPart; // 앞 3글자만 보여주고 마스킹
     }
 }
