@@ -75,9 +75,18 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/candles/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tickers").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/user/check-nickname").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/user/check-username").permitAll()
 
                         /** 권한 획득을 위한 API **/
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/logout").permitAll()
+                        .requestMatchers("/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/refresh",
+                                "/api/auth/logout",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password",
+                                "/api/auth/verify-username-for-password-reset"
+                        ).permitAll()
 
                         /** 그 외는 모두 인증 필요 **/
                         .anyRequest().authenticated()
