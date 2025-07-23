@@ -3,10 +3,12 @@ package month.communitybackend.service;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import month.communitybackend.domain.PasswordResetToken;
+import month.communitybackend.domain.RefreshToken;
 import month.communitybackend.domain.Role;
 import month.communitybackend.domain.User;
 import month.communitybackend.dto.UserDto;
 import month.communitybackend.repository.PasswordResetTokenRepository;
+import month.communitybackend.repository.RefreshTokenRepository;
 import month.communitybackend.repository.RoleRepository;
 import month.communitybackend.repository.UserRepository;
 import month.communitybackend.security.JwtTokenProvider;
@@ -35,6 +37,7 @@ public class AuthService {
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailService emailService;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Transactional
     public User register(UserDto.signupRequest requestDto) {
@@ -61,11 +64,25 @@ public class AuthService {
 
         Authentication authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
 
+        User user = findByUsername(username);
+
         String accessToken = tokenProvider.createToken(authentication.getName(), authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority).collect(Collectors.toList()));
         String refreshToken = tokenProvider.createRefreshToken(authentication.getName());
 
+        refreshTokenRepository.findByUser(user).ifPresentOrElse(
+                refreshTokenEntity -> refreshTokenEntity.update(refreshToken),
+                () -> refreshTokenRepository.save(new RefreshToken(user, refreshToken))
+        );
+
         return Map.of("accessToken", accessToken, "refreshToken", refreshToken);
+    }
+
+    @Transactional
+    public void logout(String refreshToken){
+        RefreshToken refreshTokenEntity = refreshTokenRepository.findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 리프레쉬 토큰입니다."));
+        refreshTokenRepository.delete(refreshTokenEntity);
     }
 
     public User findByUsername(String username) {
@@ -75,15 +92,23 @@ public class AuthService {
 
     @Transactional
     public Map<String, String> refreshTokens(String refreshToken) {
-        if (!tokenProvider.validateRefreshToken(refreshToken)) {
-            throw new IllegalArgumentException("Invalid refresh token");
+        RefreshToken refreshTokenEntity = refreshTokenRepository.findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired refresh token. Please log in again."));
+
+        if (!tokenProvider.validateRefreshToken(refreshTokenEntity.getRefreshToken())) {
+            refreshTokenRepository.delete(refreshTokenEntity);
+            throw new IllegalArgumentException("Invalid or expired refresh token. Please log in again.");
         }
-        String username = tokenProvider.getUsername(refreshToken);
-        User user = findByUsername(username);
+
+        String username = tokenProvider.getUsername(refreshTokenEntity.getRefreshToken());
+        User user = refreshTokenEntity.getUser();
         List<String> roles = user.getRoles().stream().map(Role::getName).collect(Collectors.toList());
 
         String newAccessToken = tokenProvider.createToken(username, roles);
         String newRefreshToken = tokenProvider.createRefreshToken(username);
+
+        // DB의 Refresh Token 갱신
+        refreshTokenEntity.update(newRefreshToken);
 
         return Map.of("accessToken", newAccessToken, "refreshToken", newRefreshToken);
     }

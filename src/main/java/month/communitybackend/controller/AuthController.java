@@ -114,17 +114,21 @@ public class AuthController {
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, newRefreshTokenCookie.toString());
-
         return ResponseEntity.ok(Map.of("accessToken", newTokens.get("accessToken")));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletResponse response) {
+    public ResponseEntity<?> logout(@CookieValue(name = "refreshToken", required = false) String refreshTokenValue, HttpServletResponse response) {
+        if (refreshTokenValue != null && !refreshTokenValue.isEmpty()) {
+            try {
+                authService.logout(refreshTokenValue);
+            } catch (IllegalArgumentException e) {
+            }
+        }
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", null)
                 .httpOnly(true)
-                .secure(false) // 개발 환경에서는 false, 배포 환경에서는 true
+                .secure(false) // 배포 환경에서는 true로 변경
                 .path("/")
-                //.sameSite("Lax") // SameSite 설정
                 .maxAge(0) // 쿠키 즉시 만료
                 .build();
 
