@@ -1,5 +1,11 @@
 package month.communitybackend.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -19,10 +25,16 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Tag(name = "Auth Document", description = "회원가입, 로그인, 토큰 갱신과 같은 인증 API 문서화")
 public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
+    @Operation(summary = "회원 가입 API", description = "사용자 정보를 받아 회원가입을 처리합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "회원가입 성공"),
+            @ApiResponse(responseCode = "400", description = "입력값 유효성 검증 실패")
+    })
     public ResponseEntity<UserDto.Response> register(
             @Valid @RequestBody UserDto.signupRequest dto
     ) {
@@ -44,6 +56,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "로그인 API", description = "ID, PassWord를 입력받아 로그인 처리합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "회원가입 성공"),
+            @ApiResponse(responseCode = "400", description = "입력값 유효성 검증 실패")
+    })
     public ResponseEntity<?> login(@RequestBody UserDto.LoginRequest loginRequest, HttpServletResponse response) {
         Map<String, String> tokens = authService.login(loginRequest.getUsername(), loginRequest.getPassword());
 
