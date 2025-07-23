@@ -88,6 +88,13 @@ public class SecurityConfig {
                                 "/api/auth/verify-username-for-password-reset"
                         ).permitAll()
 
+                        /**Swagger UI 접근허용**/
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-resources/**",
+                                "/webjars/**"
+                        ).permitAll()
                         /** 그 외는 모두 인증 필요 **/
                         .anyRequest().authenticated()
                 )
