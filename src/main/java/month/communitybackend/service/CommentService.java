@@ -6,7 +6,7 @@ import month.communitybackend.domain.Comment;
 import month.communitybackend.domain.Post;
 import month.communitybackend.domain.User;
 import month.communitybackend.repository.CommentRepository;
-import month.communitybackend.repository.PostRepository; // PostRepository 추가
+import month.communitybackend.repository.PostRepository;
 import month.communitybackend.repository.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -17,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CommentService {
     private final CommentRepository commentRepo;
-    private final PostRepository postRepo; // PostRepository 주입
+    private final PostRepository postRepo;
     private final UserRepository userRepo;
 
     @Transactional
@@ -26,7 +26,6 @@ public class CommentService {
         User author = userRepo.findByUsername(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
 
-        // PostService 대신 PostRepository를 사용하여 Post 엔티티 직접 조회
         Post post = postRepo.findById(postId)
                 .orElseThrow(() -> new EntityNotFoundException("Post not found: " + postId));
 
@@ -42,7 +41,12 @@ public class CommentService {
         return commentRepo.findByPostId(postId);
     }
 
-    public void delete(Long commentId) {
+    public void delete(Long postId, Long commentId) {
+        Comment comment = commentRepo.findById(commentId)
+                        .orElseThrow(() -> new EntityNotFoundException("댓글을 찾을 수 없습니다."));
+        if(!comment.getPost().getId().equals(postId)) {
+            throw new IllegalArgumentException("해당 게시글의 작성되지 않은 댓글입니다.");
+        }
         commentRepo.deleteById(commentId);
     }
 
@@ -53,8 +57,11 @@ public class CommentService {
     }
 
     @Transactional
-    public Comment update(Long id, String newContent) {
+    public Comment update(Long postId, Long id, String newContent) {
         Comment c = get(id);
+        if(!c.getPost().getId().equals(postId)) {
+            throw new IllegalArgumentException("해당 게시글의 작성되지 않은 댓글입니다.");
+        }
         c.setContent(newContent);
         return commentRepo.save(c);
     }
