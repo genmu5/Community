@@ -25,12 +25,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    // 모든 API 요청에 대해서 유효한 토큰 보유 여부 확인
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain chain
     ) throws ServletException, IOException {
-        if("/api/auth/refersh".equals(request.getRequestURI())) {
+        if("/api/auth/refersh".equals(request.getRequestURI())) { // 토큰을 재발급하는 API 요청은 예외처리
             chain.doFilter(request, response);
             return;
         }

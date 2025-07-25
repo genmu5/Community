@@ -28,7 +28,7 @@ public class JwtTokenProvider {
         this.validityInMs = validityInMs;
         this.refreshValidityInMs = refreshValidityInMs;
     }
-
+    // AccessToken 생성
     public String createToken(String username, List<String> roles) {
         Claims claims = Jwts.claims().setSubject(username);
         claims.put("roles", roles);
@@ -43,7 +43,7 @@ public class JwtTokenProvider {
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
-
+    // RefreshToken 생성
     public String createRefreshToken(String username) {
         Date now = new Date();
         Date exp = new Date(now.getTime() + refreshValidityInMs);
@@ -55,7 +55,7 @@ public class JwtTokenProvider {
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
-
+    // AccessToken 검증
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
@@ -64,7 +64,7 @@ public class JwtTokenProvider {
             return false;
         }
     }
-
+    // RefreshToken 검증
     public boolean validateRefreshToken(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
@@ -73,12 +73,12 @@ public class JwtTokenProvider {
             return false;
         }
     }
-
+    // JWT token 에서 사용자 ID 추출
     public String getUsername(String token) {
         return Jwts.parserBuilder().setSigningKey(key).build()
                 .parseClaimsJws(token).getBody().getSubject();
     }
-
+    // JWT token 에서 사용자 권한 추출
     @SuppressWarnings("unchecked")
     public List<String> getRoles(String token) {
         return (List<String>) Jwts.parserBuilder().setSigningKey(key).build()

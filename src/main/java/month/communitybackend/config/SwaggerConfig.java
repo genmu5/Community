@@ -24,7 +24,7 @@ public class SwaggerConfig {
         String jwtScheme = "jwtAuth";
         SecurityRequirement securityRequirement = new SecurityRequirement().addList(jwtScheme);
         Components components = new Components()
-            .addSecuritySchemes(jwtScheme, new SecurityScheme()
+            .addSecuritySchemes(jwtScheme, new SecurityScheme() // Access Token 삽입을 위한
                 .name("Authorization")
                 .type(SecurityScheme.Type.HTTP)
                 .in(SecurityScheme.In.HEADER)

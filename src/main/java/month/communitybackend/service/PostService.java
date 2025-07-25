@@ -28,7 +28,7 @@ public class PostService {
                 .getName();
 
         User user = userRepo.findByUsername(username)
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
+                .orElseThrow(() -> new EntityNotFoundException("해당 사용자를 찾을 수 없습니다.: " + username));
 
         Post post = Post.builder()
                 .author(user)
@@ -47,14 +47,14 @@ public class PostService {
 
     public PostDto.Response get(Long postId) {
         Post post = postRepo.findById(postId)
-                .orElseThrow(() -> new EntityNotFoundException("Post not found"));
+                .orElseThrow(() -> new EntityNotFoundException("게시글을 찾을 수 없습니다."));
         return convertToPostDtoResponse(post);
     }
 
     @Transactional
     public Post update(Long postId, String title, String content) {
         Post post = postRepo.findById(postId)
-                .orElseThrow(() -> new EntityNotFoundException("Post not found"));
+                .orElseThrow(() -> new EntityNotFoundException("게시글을 찾을 수 없습니다."));
         post.setTitle(title);
         post.setContent(content);
         return postRepo.save(post);
@@ -73,7 +73,7 @@ public class PostService {
     public Page<PostDto.Response> getMyPosts(Pageable pageable) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepo.findByUsername(username)
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
+                .orElseThrow(() -> new EntityNotFoundException("해당 사용자를 찾을 수 없습니다.: " + username));
         return postRepo.findByAuthor(user, pageable).map(this::convertToPostDtoResponse);
     }
 

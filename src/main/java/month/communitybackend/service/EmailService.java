@@ -11,14 +11,16 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
+    // 텍스트 형태의 메세지 구성
     public void sendEmail(String to, String subject, String text) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
         message.setSubject(subject);
         message.setText(text);
+
         mailSender.send(message);
     }
-
+    // 메세지 내용
     public void sendPasswordResetEmail(String userEmail, String token) {
         String subject = "비밀번호 재설정 링크입니다.";
         String resetUrl = "http://localhost:3000/reset-password?token=" + token; // 프론트엔드 URL

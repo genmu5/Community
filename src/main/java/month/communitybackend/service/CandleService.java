@@ -30,9 +30,8 @@ public class CandleService {
     private static final String UPBIT_API =
             "https://api.upbit.com/v1/candles/minutes/{unit}?market={market}&count={count}";
 
-    /**
-     * 외부(업비트)에서 최근 count개 봉을 받아와 CandleDto로 변환
-     */
+
+     // 외부(업비트)에서 최근 count개 봉을 받아와 CandleDto로 변환
     public List<CandleDto> fetchFromUpbit(String market, int unit, int count) {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
@@ -43,9 +42,9 @@ public class CandleService {
                 HttpMethod.GET,
                 req,
                 CandleDto[].class,
-                unit,    // {unit}
-                market,  // {market}
-                count    // {count}
+                unit,
+                market,
+                count
         );
 
         return Arrays.stream(resp.getBody())
@@ -61,12 +60,10 @@ public class CandleService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * 받아온 DTO를 DB에 저장
-     */
+    // 받아온 DTO를 DB에 저장, 추후 사용가능 할 수도 있기 때문, CandleScheduler 에서 사용
     @Transactional
-    public void saveAll(List<CandleDto> dtos) {
-        List<Candle> entities = dtos.stream()
+    public void saveAll(List<CandleDto> dto) {
+        List<Candle> entities = dto.stream()
                 .map(d -> Candle.builder()
                         .id(new CandleId(d.getMarket(), d.getOpenTime()))
                         .open(d.getOpen())
@@ -78,7 +75,7 @@ public class CandleService {
                 .collect(Collectors.toList());
         candleRepo.saveAll(entities);
     }
-
+    //최근 1분 캔들차트 조회, CandleController 에서 사용
     public List<CandleDto> getRecent(String market, int limit) {
         Pageable page = PageRequest.of(0, limit);
         return candleRepo

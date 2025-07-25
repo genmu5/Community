@@ -40,12 +40,14 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
 
     @Transactional
+    // 회원 가입 요청
     public User register(UserDto.signupRequest requestDto) {
         if (userRepository.existsByUsername(requestDto.getUsername())) {
             throw new IllegalArgumentException("이미 사용 중인 사용자 이름입니다.");
         }
+        // 사용자의 권한확인, 추후 관리자 등록도 고려하여 설계
         Role userRole = roleRepository.findByName("ROLE_USER")
-                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                .orElseThrow(() -> new RuntimeException("권한이 없는 사용자 입니다."));
 
         User user = User.builder()
                 .username(requestDto.getUsername())
@@ -54,22 +56,28 @@ public class AuthService {
                 .nickname(requestDto.getNickname())
                 .build();
         user.getRoles().add(userRole);
+
         return userRepository.save(user);
     }
 
     @Transactional
+    // 로그인 요청
     public Map<String, String> login(String username, String password) {
+        // username과 password를 기반으로 AuthenticationToken 객체 생성
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(username, password);
 
         Authentication authentication = authenticationManagerBuilder.getObject().authenticate(authenticationToken);
 
+        // 인증 정보를 기반으로 JWT 토큰 생성
         User user = findByUsername(username);
 
+        // Access Token, Refresh Token 생성
         String accessToken = tokenProvider.createToken(authentication.getName(), authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority).collect(Collectors.toList()));
         String refreshToken = tokenProvider.createRefreshToken(authentication.getName());
 
+        // Refresh Token 저장 또는 업데이트
         refreshTokenRepository.findByUser(user).ifPresentOrElse(
                 refreshTokenEntity -> refreshTokenEntity.update(refreshToken),
                 () -> refreshTokenRepository.save(new RefreshToken(user, refreshToken))
@@ -78,6 +86,7 @@ public class AuthService {
         return Map.of("accessToken", accessToken, "refreshToken", refreshToken);
     }
 
+    // 로그아웃 요청
     @Transactional
     public void logout(String refreshToken){
         RefreshToken refreshTokenEntity = refreshTokenRepository.findByRefreshToken(refreshToken)
@@ -85,25 +94,30 @@ public class AuthService {
         refreshTokenRepository.delete(refreshTokenEntity);
     }
 
+    // 사용자에 대한 에러 예외처리를 위해 재정의
     public User findByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
+                .orElseThrow(() -> new EntityNotFoundException("해당 사용자를 찾을 수 없습니다.: " + username));
     }
 
+    // 토큰 갱신 (RTR : Refresh Token Rotation)방식
     @Transactional
     public Map<String, String> refreshTokens(String refreshToken) {
         RefreshToken refreshTokenEntity = refreshTokenRepository.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired refresh token. Please log in again."));
+                .orElseThrow(() -> new IllegalArgumentException("허가되지 않거나 기간이 지난 Refresh token 입니다. 재로그인해주세요."));
 
         if (!tokenProvider.validateRefreshToken(refreshTokenEntity.getRefreshToken())) {
             refreshTokenRepository.delete(refreshTokenEntity);
-            throw new IllegalArgumentException("Invalid or expired refresh token. Please log in again.");
+            throw new IllegalArgumentException("허가되지 않거나 기간이 지난 Refresh token 입니다. 재로그인해주세요.");
         }
 
         String username = tokenProvider.getUsername(refreshTokenEntity.getRefreshToken());
         User user = refreshTokenEntity.getUser();
-        List<String> roles = user.getRoles().stream().map(Role::getName).collect(Collectors.toList());
+        List<String> roles = user.getRoles().stream()
+                .map(Role::getName)
+                .collect(Collectors.toList());
 
+        // AccessToken을 발급받을시 RefreshToken 또한 같이 재발급, RTR
         String newAccessToken = tokenProvider.createToken(username, roles);
         String newRefreshToken = tokenProvider.createRefreshToken(username);
 
@@ -113,7 +127,7 @@ public class AuthService {
         return Map.of("accessToken", newAccessToken, "refreshToken", newRefreshToken);
     }
 
-    // 1. 비밀번호 재설정 요청 (이메일 전송)
+    // 비밀번호 재설정 요청 (이메일 전송)
     @Transactional
     public void requestPasswordReset(String username, String email) {
         User user = userRepository.findByUsername(username)
@@ -137,7 +151,7 @@ public class AuthService {
         emailService.sendPasswordResetEmail(user.getEmail(), token);
     }
 
-    // 2. 비밀번호 재설정 완료
+    // 비밀번호 재설정 완료
     @Transactional
     public void resetPassword(String token, String newPassword) {
         PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
