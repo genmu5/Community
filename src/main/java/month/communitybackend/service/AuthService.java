@@ -137,15 +137,16 @@ public class AuthService {
             throw new IllegalArgumentException("아이디와 이메일이 일치하지 않습니다.");
         }
 
-        // 기존에 발급된 토큰이 있다면 삭제 (선택 사항: 여러 번 요청 시 이전 토큰 무효화)
-        passwordResetTokenRepository.findByUser(user).ifPresent(passwordResetTokenRepository::delete);
-
         String token = UUID.randomUUID().toString();
-        PasswordResetToken resetToken = PasswordResetToken.builder()
-                .token(token)
-                .user(user)
-                .expiryDate(LocalDateTime.now().plusHours(1)) // 1시간 유효
-                .build();
+        LocalDateTime expiryDate = LocalDateTime.now().plusHours(1);
+
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByUser(user)
+                        .orElse(new PasswordResetToken());
+
+        resetToken.setUser(user);
+        resetToken.setToken(token);
+        resetToken.setExpiryDate(expiryDate);
+
         passwordResetTokenRepository.save(resetToken);
 
         emailService.sendPasswordResetEmail(user.getEmail(), token);
