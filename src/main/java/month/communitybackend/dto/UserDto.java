@@ -20,8 +20,6 @@ public class UserDto {
         @Email
         @Schema(description = "이메일", example = "test@example.com")
         private String email;
-        @Schema(description = "닉네임", example = "코인마스터")
-        private String nickname;
     }
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     @Schema(description = "로그인 요청 DTO")
@@ -44,8 +42,6 @@ public class UserDto {
         private String username;
         @Schema(description = "이메일", example = "test@example.com")
         private String email;
-        @Schema(description = "닉네임", example = "코인마스터")
-        private String nickname;
         @Schema(description = "사용자 권한", example = "[ROLE_USER]")
         private Set<String> roles;
     }

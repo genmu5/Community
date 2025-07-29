@@ -53,7 +53,6 @@ public class AuthService {
                 .username(requestDto.getUsername())
                 .password(passwordEncoder.encode(requestDto.getPassword()))
                 .email(requestDto.getEmail())
-                .nickname(requestDto.getNickname())
                 .build();
         user.getRoles().add(userRole);
 
