@@ -26,9 +26,9 @@ public class Comment {
     @JoinColumn(name = "post_id", nullable = false)
     private Post post;
 
-    // author_id, 사용자가 삭제되면 댓글도 삭제
+    // author_id, 사용자가 삭제되면 author 정보는 NULL로 처리
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id", nullable = false)
+    @JoinColumn(name = "author_id")
     private User author;
 
     @Lob

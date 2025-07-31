@@ -30,13 +30,7 @@ public class CommentController {
             @PathVariable Long postId,
             @RequestBody CommentDto.Create dto) {
         Comment c = commentService.create(postId, dto.getContent());
-        CommentDto.Response body = CommentDto.Response.builder()
-                .id(c.getId())
-                .content(c.getContent())
-                .authorUsername(c.getAuthor().getUsername())
-                .createdAt(c.getCreatedAt())
-                .build();
-        return ResponseEntity.status(HttpStatus.CREATED).body(body);
+        return ResponseEntity.status(HttpStatus.CREATED).body(CommentDto.Response.from(c));
     }
 
     @GetMapping
@@ -46,12 +40,7 @@ public class CommentController {
     })
     public List<CommentDto.Response> list(@PathVariable Long postId) {
         return commentService.listByPost(postId).stream()
-                .map(c -> CommentDto.Response.builder()
-                        .id(c.getId())
-                        .content(c.getContent())
-                        .authorUsername(c.getAuthor().getUsername())
-                        .createdAt(c.getCreatedAt())
-                        .build())
+                .map(CommentDto.Response::from)
                 .toList();
     }
 
@@ -77,12 +66,6 @@ public class CommentController {
             @PathVariable Long commentId,
             @RequestBody CommentDto.Update dto) {
         Comment c = commentService.update(postId, commentId, dto.getContent());
-        CommentDto.Response body = CommentDto.Response.builder()
-                .id(c.getId())
-                .content(c.getContent())
-                .authorUsername(c.getAuthor().getUsername())
-                .createdAt(c.getCreatedAt())
-                .build();
-        return ResponseEntity.ok(body);
+        return ResponseEntity.ok(CommentDto.Response.from(c));
     }
 }
