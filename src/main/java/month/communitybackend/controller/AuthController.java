@@ -130,17 +130,29 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    @Operation(summary = "로그아웃", description = "사용자의 Refresh Token을 만료시키고 쿠키를 삭제합니다.")
+    @Operation(summary = "로그아웃", description = "사용자의 Access Token을 블랙리스트에 추가하고 Refresh Token 쿠키를 삭제합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "로그아웃 성공", content = @Content(schema = @Schema(example = "Logged out successfully"))),
+            @ApiResponse(responseCode = "400", description = "유효하지 않은 토큰", content = @Content)
     })
-    public ResponseEntity<?> logout(@CookieValue(name = "refreshToken", required = false) String refreshTokenValue, HttpServletResponse response) {
-        if (refreshTokenValue != null && !refreshTokenValue.isEmpty()) {
+    public ResponseEntity<?> logout(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            HttpServletResponse response
+    ) {
+        String accessToken = null;
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            accessToken = authorizationHeader.substring(7);
+        }
+
+        if (accessToken != null) {
             try {
-                authService.logout(refreshTokenValue);
+                authService.logout(accessToken);
             } catch (IllegalArgumentException e) {
+                // 유효하지 않은 토큰이어도 로그아웃 처리는 진행 (쿠키 삭제)
             }
         }
+
+        // Refresh Token 쿠키 삭제
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", null)
                 .httpOnly(true)
                 .secure(false) // 배포 환경에서는 true로 변경

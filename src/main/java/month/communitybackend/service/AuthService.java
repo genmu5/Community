@@ -3,12 +3,10 @@ package month.communitybackend.service;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import month.communitybackend.domain.PasswordResetToken;
-import month.communitybackend.domain.RefreshToken;
 import month.communitybackend.domain.Role;
 import month.communitybackend.domain.User;
 import month.communitybackend.dto.UserDto;
 import month.communitybackend.repository.PasswordResetTokenRepository;
-import month.communitybackend.repository.RefreshTokenRepository;
 import month.communitybackend.repository.RoleRepository;
 import month.communitybackend.repository.UserRepository;
 import month.communitybackend.security.JwtTokenProvider;
@@ -20,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +36,7 @@ public class AuthService {
     private final AuthenticationManagerBuilder authenticationManagerBuilder;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final EmailService emailService;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RedisService redisService; // RefreshTokenRepository 대신 RedisService 주입
 
     @Transactional
     // 회원 가입 요청
@@ -76,21 +75,27 @@ public class AuthService {
                 .map(GrantedAuthority::getAuthority).collect(Collectors.toList()));
         String refreshToken = tokenProvider.createRefreshToken(authentication.getName());
 
-        // Refresh Token 저장 또는 업데이트
-        refreshTokenRepository.findByUser(user).ifPresentOrElse(
-                refreshTokenEntity -> refreshTokenEntity.update(refreshToken),
-                () -> refreshTokenRepository.save(new RefreshToken(user, refreshToken))
-        );
+        // Refresh Token을 Redis에 저장
+        redisService.setValues("RT:" + user.getUsername(), refreshToken, Duration.ofMillis(tokenProvider.getRefreshValidityInMs()));
 
         return Map.of("accessToken", accessToken, "refreshToken", refreshToken);
     }
 
     // 로그아웃 요청
     @Transactional
-    public void logout(String refreshToken){
-        RefreshToken refreshTokenEntity = refreshTokenRepository.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 리프레쉬 토큰입니다."));
-        refreshTokenRepository.delete(refreshTokenEntity);
+    public void logout(String accessToken) {
+        if (!tokenProvider.validateToken(accessToken)) {
+            throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
+        }
+
+        String username = tokenProvider.getUsername(accessToken);
+
+        // Access Token을 블랙리스트에 추가
+        Long expiration = tokenProvider.getExpiration(accessToken);
+        redisService.setValues(accessToken, "logout", Duration.ofMillis(expiration));
+
+        // Refresh Token 삭제
+        redisService.deleteValues("RT:" + username);
     }
 
     // 사용자에 대한 에러 예외처리를 위해 재정의
@@ -102,16 +107,18 @@ public class AuthService {
     // 토큰 갱신 (RTR : Refresh Token Rotation)방식
     @Transactional
     public Map<String, String> refreshTokens(String refreshToken) {
-        RefreshToken refreshTokenEntity = refreshTokenRepository.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new IllegalArgumentException("허가되지 않거나 기간이 지난 Refresh token 입니다. 재로그인해주세요."));
-
-        if (!tokenProvider.validateRefreshToken(refreshTokenEntity.getRefreshToken())) {
-            refreshTokenRepository.delete(refreshTokenEntity);
+        if (!tokenProvider.validateRefreshToken(refreshToken)) {
             throw new IllegalArgumentException("허가되지 않거나 기간이 지난 Refresh token 입니다. 재로그인해주세요.");
         }
 
-        String username = tokenProvider.getUsername(refreshTokenEntity.getRefreshToken());
-        User user = refreshTokenEntity.getUser();
+        String username = tokenProvider.getUsername(refreshToken);
+        String storedRefreshToken = redisService.getValues("RT:" + username);
+
+        if (storedRefreshToken == null || !storedRefreshToken.equals(refreshToken)) {
+            throw new IllegalArgumentException("허가되지 않거나 기간이 지난 Refresh token 입니다. 재로그인해주세요.");
+        }
+
+        User user = findByUsername(username);
         List<String> roles = user.getRoles().stream()
                 .map(Role::getName)
                 .collect(Collectors.toList());
@@ -120,8 +127,8 @@ public class AuthService {
         String newAccessToken = tokenProvider.createToken(username, roles);
         String newRefreshToken = tokenProvider.createRefreshToken(username);
 
-        // DB의 Refresh Token 갱신
-        refreshTokenEntity.update(newRefreshToken);
+        // Redis의 Refresh Token 갱신
+        redisService.setValues("RT:" + username, newRefreshToken, Duration.ofMillis(tokenProvider.getRefreshValidityInMs()));
 
         return Map.of("accessToken", newAccessToken, "refreshToken", newRefreshToken);
     }
@@ -169,4 +176,5 @@ public class AuthService {
         passwordResetTokenRepository.delete(resetToken); // 사용된 토큰 삭제
     }
 }
+
 

@@ -5,6 +5,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import lombok.Getter;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -14,6 +15,7 @@ import java.util.Date;
 import java.util.List;
 
 @Component
+@Getter
 public class JwtTokenProvider {
     private final Key key;
     private final long validityInMs;
@@ -83,5 +85,11 @@ public class JwtTokenProvider {
     public List<String> getRoles(String token) {
         return (List<String>) Jwts.parserBuilder().setSigningKey(key).build()
                 .parseClaimsJws(token).getBody().get("roles");
+    }
+
+    public Long getExpiration(String accessToken) {
+        Date expiration = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(accessToken).getBody().getExpiration();
+        long now = new Date().getTime();
+        return (expiration.getTime() - now);
     }
 }
